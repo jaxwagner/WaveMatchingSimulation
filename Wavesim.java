@@ -27,7 +27,7 @@ public class Wavesim extends JFrame implements ActionListener, MouseListener
 	Timer clock = new Timer(DELAY_IN_MILLISEC, this);
 
 
-	//num surfers and num waves
+	//num surfers
 	final static int NUM_SURFERS = 10;
 
 	//start and stop the simulation
@@ -54,6 +54,8 @@ public class Wavesim extends JFrame implements ActionListener, MouseListener
 	final static int END_ZONE_Y = MAX_HEIGHT - 50;
 
 	public int time = 0;
+
+
 
 	
 	public static void main (String [] args)
@@ -89,18 +91,15 @@ public class Wavesim extends JFrame implements ActionListener, MouseListener
 				skill = (int)((rand.nextGaussian() * 25) + 50);
 			}
 
-			//int [] prefList = mapSkillToPref(skill);
-//			for(int j = 0; j < prefList.length; j ++)
-//			{
-//				//TODO add preference distributions for surfers
-//				prefList[j] = (int)(Math.random()*10);
-//			}
+			//TODO on wave skill distribution
+			int onWaveSkill = (int)((rand.nextGaussian() * 25) + 50);
+			while(onWaveSkill < 0 || onWaveSkill > 100)
+			{
+				onWaveSkill = (int)((rand.nextGaussian() * 25) + 50);
+			}
 
 
-
-
-
-			surferList[i] = new Surfer(x, y, surferId, skill);
+			surferList[i] = new Surfer(x, y, surferId, skill, onWaveSkill);
 		}
 
 		//initialize wave
@@ -179,12 +178,18 @@ public class Wavesim extends JFrame implements ActionListener, MouseListener
 	{
 		//aggregate surfer utilities and print
 		int utility = 0;
+		int competitionUtility_wave = 0;
+		int compUtil_paddle = 0;
 		for(int i = 0; i < NUM_SURFERS; i++)
 		{
 			utility += surferList[i].utility;
+			competitionUtility_wave += surferList[i].competitionUtility_wave;
+			compUtil_paddle += surferList[i].competitionUtility_paddle;
 		}
-		System.out.println(utility);
+		//System.out.println(utility);
+		System.out.println(competitionUtility_wave+", "+ compUtil_paddle);
 	}
+
 
 	public void printNumWavesRidden()
 	{
@@ -392,15 +397,19 @@ class Surfer
 	public Wave surferWave = null;
 
 	public int numWavesRidden = 0;
+	public int onWaveSkill;
+	public int competitionUtility_wave = 0;
+	public int competitionUtility_paddle = 0;
 
 
-	public Surfer(int xIn, int yIn, int idIn, int skillIn)
+	public Surfer(int xIn, int yIn, int idIn, int skillIn, int onWaveSkillIn)
 	{
 		x = xIn;
 		y = yIn;
 		surferId = idIn;
 		//preferenceDistribution = prefDistIn;
 		skillLevel = skillIn;
+		onWaveSkill = onWaveSkillIn;
 	}
 
 	public void updateUtility(Wave w)
@@ -436,6 +445,8 @@ class Surfer
 		surferWave = w;
 		dy = w.dy;
 		updateUtility(w);
+		competitionUtility_wave += onWaveSkill;
+		competitionUtility_paddle += skillLevel;
 		waiting = false;
 		surfing = true;
 		paddling = false;
