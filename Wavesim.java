@@ -13,6 +13,7 @@ import java.awt.event.MouseMotionListener;
 import java.util.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 
 
@@ -63,12 +64,15 @@ public class Wavesim extends JFrame implements ActionListener, MouseListener
 		mg.addMouseListener(mg);
 	}
 
+
+
 	public Wavesim()
 	{
 		// buttons
 		buttonList[0] = playButton;
 		//buttonList[1] = resetButton;
 
+		Random rand = new Random();
 
 		//initialize surfers
 		for(int i = 0; i < NUM_SURFERS; i ++)
@@ -78,18 +82,25 @@ public class Wavesim extends JFrame implements ActionListener, MouseListener
 			int y = TAKE_OFF_ZONE_Y;
 			int surferId = i;
 
-			int [] prefList = new int[100];
-			for(int j = 0; j < prefList.length; j ++)
+			//TODO change the skill distribution
+			int skill = (int)((rand.nextGaussian() * 25) + 50);
+			while(skill < 0 || skill > 100)
 			{
-				//TODO add preference distributions for surfers
-				prefList[j] = (int)(Math.random()*10);
+				skill = (int)((rand.nextGaussian() * 25) + 50);
 			}
 
-			int skill = (int)(Math.random()*100);
+			//int [] prefList = mapSkillToPref(skill);
+//			for(int j = 0; j < prefList.length; j ++)
+//			{
+//				//TODO add preference distributions for surfers
+//				prefList[j] = (int)(Math.random()*10);
+//			}
 
 
 
-			surferList[i] = new Surfer(x, y, surferId, prefList, skill);
+
+
+			surferList[i] = new Surfer(x, y, surferId, skill);
 		}
 
 		//initialize wave
@@ -105,9 +116,10 @@ public class Wavesim extends JFrame implements ActionListener, MouseListener
 		setVisible(true);
 	}
 
+
 	//TODO fill in code here to make wave quality according to some distribution
 	public int generateWaveQuality(){
-		return (int)(Math.random()*10);
+		return (int)(Math.random()*100);
 	}
 
 	public void reset()
@@ -128,10 +140,33 @@ public class Wavesim extends JFrame implements ActionListener, MouseListener
 
 
 	//TODO pick a surfer according to their utility function
-	public Surfer pickSurfer(List<Surfer> inZoneList)
+	public Surfer pickSurfer(List<Surfer> inZoneList, Wave w)
 	{
+		//random allocation
+		//return inZoneList.get((int)(Math.random()*inZoneList.size()));
 
-		return inZoneList.get((int)(Math.random()*inZoneList.size()));
+		//pick surfer with best skill (current system)
+		Surfer maxSkill = inZoneList.get(0);
+		for(int i = 1; i < inZoneList.size(); i++)
+		{
+			if(inZoneList.get(i).skillLevel > maxSkill.skillLevel)
+			{
+				maxSkill = inZoneList.get(i);
+			}
+		}
+		return maxSkill;
+
+		//pick surfer that gains the most utility
+//		Surfer maxUtil = inZoneList.get(0);
+//		for(int i = 1; i < inZoneList.size(); i++)
+//		{
+//			if(inZoneList.get(i).calculateUtilityForSurferGivenWave(w.quality) > maxUtil.calculateUtilityForSurferGivenWave(w.quality))
+//			{
+//				maxUtil = inZoneList.get(i);
+//			}
+//		}
+//		return maxUtil;
+
 	}
 
 	public Wave makeNewWave()
@@ -149,6 +184,16 @@ public class Wavesim extends JFrame implements ActionListener, MouseListener
 			utility += surferList[i].utility;
 		}
 		System.out.println(utility);
+	}
+
+	public void printNumWavesRidden()
+	{
+		System.out.println("Wave frequencies");
+		for(int i = 0; i < NUM_SURFERS; i++)
+		{
+			System.out.println("Skill: " + surferList[i].skillLevel + " NumWaves: "+ surferList[i].numWavesRidden);
+		}
+		System.out.println(" ");
 	}
 
 	/**
@@ -178,7 +223,7 @@ public class Wavesim extends JFrame implements ActionListener, MouseListener
 				Wave w = waveList.get(i);
 				if(w.y == TAKE_OFF_ZONE_Y)
 				{
-					Surfer s = pickSurfer(inZoneList);
+					Surfer s = pickSurfer(inZoneList, w);
 					s.catchWave(w);
 					printUtility();
 				}
@@ -236,6 +281,10 @@ public class Wavesim extends JFrame implements ActionListener, MouseListener
 
 		if(x > playButton.x && x < playButton.x + playButton.width && y > playButton.y && y < playButton.y + playButton.height)
 		{
+			if(running)
+			{
+				printNumWavesRidden();
+			}
 			running = !running;
 			playButton.setClicked(running);
 		}
@@ -299,6 +348,18 @@ public class Wavesim extends JFrame implements ActionListener, MouseListener
 		g.setColor(Color.green);
 		for(int i = 0; i < NUM_SURFERS; i++)
 		{
+			if(surferList[i].skillLevel < 33)
+			{
+				g.setColor(Color.green);
+			}
+			else if(surferList[i].skillLevel < 66)
+			{
+				g.setColor(Color.cyan);
+			}
+			else
+			{
+				g.setColor(Color.red);
+			}
 			g.fillOval(surferList[i].getSurferX(), surferList[i].getSurferY(), 10, 10);
 		}
 
@@ -323,35 +384,51 @@ class Surfer
 	public int dy = 0;
 	public int surferId;
 	public int skillLevel;
-	public int [] preferenceDistribution;
+	//public int [] preferenceDistribution;
 	public int utility = 0;
 	boolean waiting = true;
 	boolean surfing = false;
 	boolean paddling = false;
 	public Wave surferWave = null;
 
+	public int numWavesRidden = 0;
 
-	public Surfer(int xIn, int yIn, int idIn, int [] prefDistIn, int skillIn)
+
+	public Surfer(int xIn, int yIn, int idIn, int skillIn)
 	{
 		x = xIn;
 		y = yIn;
 		surferId = idIn;
-		preferenceDistribution = prefDistIn;
+		//preferenceDistribution = prefDistIn;
 		skillLevel = skillIn;
 	}
 
 	public void updateUtility(Wave w)
 	{
-		//decide how much utility to add by seeing how many times the wave w quality appears in pref dist list
-		int x = 0;
-		for(int i = 0; i < preferenceDistribution.length; i ++)
-		{
-			if(preferenceDistribution[i] == w.quality)
-			{
-				x++;
-			}
-		}
+//		//decide how much utility to add by seeing how many times the wave w quality appears in pref dist list
+//		int x = 0;
+//		for(int i = 0; i < preferenceDistribution.length; i ++)
+//		{
+//			if(preferenceDistribution[i] == w.quality)
+//			{
+//				x++;
+//			}
+//		}
+
+		int waveQuality = w.quality;
+		int x = calculateUtilityForSurferGivenWave(waveQuality);
 		utility = utility + x;
+	}
+
+	//TODO this function can be update
+	public int calculateUtilityForSurferGivenWave(int waveQuality)
+	{
+		int scalar = 10;
+		if(waveQuality > skillLevel)
+		{
+			return 0;
+		}
+		return (int)(scalar*waveQuality/skillLevel);
 	}
 
 	public void catchWave(Wave w)
@@ -362,6 +439,7 @@ class Surfer
 		waiting = false;
 		surfing = true;
 		paddling = false;
+		numWavesRidden++;
 	}
 
 	public void getOffWave()
@@ -428,6 +506,10 @@ class Wave
 	}
 
 }
+
+
+
+
 class Button
 {
 	public int x;
